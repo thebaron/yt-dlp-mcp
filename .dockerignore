@@ -1,0 +1,10 @@
+node_modules
+lib
+coverage
+test-dist
+dist
+plan
+.git
+.claude
+.npmrc
+*.log

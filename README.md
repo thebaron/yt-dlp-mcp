@@ -205,6 +205,37 @@ Go to `Settings | Tools | AI Assistant | Model Context Protocol (MCP)` -> `Add`.
 npm install -g @kevinwatt/yt-dlp-mcp
 ```
 
+### Streamable HTTP (Docker / Kubernetes)
+
+By default the server speaks MCP over stdio. Set `YTDLP_MCP_TRANSPORT=http` to
+serve [Streamable HTTP](https://modelcontextprotocol.io/specification/2025-06-18/basic/transports#streamable-http)
+instead. The HTTP transport is stateless, so any replica can serve any request
+without session affinity.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `YTDLP_MCP_TRANSPORT` | `stdio` | `stdio` or `http` |
+| `YTDLP_MCP_HOST` | `127.0.0.1` | Bind address (`0.0.0.0` in the Docker image) |
+| `YTDLP_MCP_PORT` | `3000` | Listen port |
+| `YTDLP_MCP_PATH` | `/mcp` | MCP endpoint path |
+| `YTDLP_MCP_AUTH_TOKEN` | _(unset)_ | When set, requests must send `Authorization: Bearer <token>` |
+
+`/healthz` and `/readyz` return `200 ok` without authentication for probes.
+
+The Docker image runs in HTTP mode and ships with `yt-dlp` and `ffmpeg`:
+
+```bash
+docker build -t yt-dlp-mcp .
+docker run -p 3000:3000 -v "$PWD/downloads:/data" \
+  -e YTDLP_MCP_AUTH_TOKEN=change-me yt-dlp-mcp
+claude mcp add --transport http yt-dlp http://localhost:3000/mcp \
+  --header "Authorization: Bearer change-me"
+```
+
+Downloaded files are written inside the container to `/data`, so mount a
+volume there. See [`deploy/kubernetes.yaml`](./deploy/kubernetes.yaml) for an
+example Deployment, Service and PersistentVolumeClaim.
+
 ---
 
 ## 🛠️ Available Tools

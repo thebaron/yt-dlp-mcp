@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Streamable HTTP transport, selected with `YTDLP_MCP_TRANSPORT=http` and configured via `YTDLP_MCP_HOST`, `YTDLP_MCP_PORT`, `YTDLP_MCP_PATH` and `YTDLP_MCP_AUTH_TOKEN` (optional bearer token). The transport is stateless, so it runs behind a load balancer without session affinity. stdio remains the default
+- `/healthz` and `/readyz` endpoints for container and Kubernetes probes
+- Graceful shutdown on `SIGTERM`/`SIGINT` in HTTP mode
+- Example Kubernetes manifest in `deploy/kubernetes.yaml`
+
+### Changed
+- Docker image now runs in HTTP mode on port 3000, uses a multi-stage build, runs as the non-root `node` user, includes `ffmpeg`, and configures yt-dlp to use Node as its JavaScript runtime for YouTube
+
 ---
 
 ## [0.10.0] - 2026-08-11

@@ -35,6 +35,7 @@ This is an MCP (Model Context Protocol) server that integrates with `yt-dlp` for
 - **Modular design**: Each feature lives in `src/modules/` (video.ts, audio.ts, subtitle.ts, search.ts, metadata.ts, comments.ts)
 - **Configuration**: `src/config.ts` - Centralized config with environment variable support and validation
 - **Utility functions**: `src/modules/utils.ts` - Shared spawn and cleanup utilities
+- **Transports**: `createServer()` in `src/index.mts` builds a fresh `McpServer` with all tools registered. stdio (default) connects one; `YTDLP_MCP_TRANSPORT=http` starts the stateless Streamable HTTP server in `src/http.ts`, which builds one server per POST request. Register new tools inside `createServer()`
 
 ### Tool Architecture
 The server exposes 10 MCP tools (all prefixed with `ytdlp_` in the protocol layer):
