@@ -1,0 +1,100 @@
+# Example deployment of yt-dlp-mcp as a Streamable HTTP MCP server.
+#
+#   kubectl create secret generic yt-dlp-mcp --from-literal=auth-token="$(openssl rand -hex 32)"
+#   kubectl apply -f deploy/kubernetes.yaml
+#
+# Clients connect to http://yt-dlp-mcp.<namespace>.svc:3000/mcp with
+# "Authorization: Bearer <auth-token>".
+#
+# The server is stateless, so metadata/search/comments/transcript tools scale
+# horizontally. Download tools write into /data; with the ReadWriteOnce claim
+# below keep replicas at 1, or switch to a ReadWriteMany storage class.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yt-dlp-mcp-data
+spec:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: yt-dlp-mcp
+  labels:
+    app: yt-dlp-mcp
+spec:
+  replicas: 1
+  strategy:
+    # A ReadWriteOnce volume cannot be mounted by old and new pods at once
+    type: Recreate
+  selector:
+    matchLabels:
+      app: yt-dlp-mcp
+  template:
+    metadata:
+      labels:
+        app: yt-dlp-mcp
+    spec:
+      # Let in-flight downloads finish after SIGTERM
+      terminationGracePeriodSeconds: 120
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+        - name: yt-dlp-mcp
+          image: yt-dlp-mcp:latest
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: YTDLP_MCP_AUTH_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: yt-dlp-mcp
+                  key: auth-token
+            # - name: YTDLP_PROXY
+            #   value: socks5://proxy.example:1080
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: yt-dlp-mcp-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: yt-dlp-mcp
+spec:
+  selector:
+    app: yt-dlp-mcp
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
